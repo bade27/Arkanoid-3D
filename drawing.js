@@ -139,6 +139,10 @@ function main() {
   var indexBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
   gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(modelIndices[1]), gl.STATIC_DRAW);
+
+
+  // ball
+  
   //---------------------------------------------------------------------------------------------
   drawScene();
 }
