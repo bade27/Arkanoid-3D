@@ -34,6 +34,9 @@ var normalMatrixPositionHandle = new Array(), vertexMatrixPositionHandle = new A
 var baseColorLocation;
 var paddleColorLocation;
 var obstaclesColorLocation;
+var uvAttributeLocation;
+var textLocation;
+var texture;
 
 // Paddle coordinates and status
 var originalPaddlePos = [0.0, 1.0, -4.5];
@@ -101,6 +104,9 @@ var ballVAO;
 var obstacleVAO;
 
 
+// cubemap
+var cubeText;
+
 
 // game status
 var lives = 3;
@@ -151,6 +157,11 @@ function main() {
   ballColorLocation = gl.getUniformLocation(programs[2], "u_color");
   obstaclesColorLocation = gl.getUniformLocation(programs[2], "u_color");
 
+  positionAttributeLocation[3] = gl.getAttribLocation(programs[3], "inPosition");
+  matrixLocation[3] = gl.getUniformLocation(programs[3], "matrix");
+  uvAttributeLocation = gl.getAttribLocation(programs[3], "a_uv");
+  textLocation = gl.getUniformLocation(programs[3], "u_texture");
+
   // persepctive and view
   perspectiveMatrix = utils.MakePerspective(90, gl.canvas.width/gl.canvas.height, 0.1, 100.0);
   viewMatrix = utils.MakeView(0.0, 5.0, 0.0, -5.0, 0.0);
@@ -163,6 +174,7 @@ function main() {
   baseVertices = baseModel.vertices;
   baseNormals = baseModel.vertexNormals;
   baseIndices = baseModel.indices;
+  baseUV = baseModel.textures;
 
   baseVAO = gl.createVertexArray();
 
@@ -173,9 +185,38 @@ function main() {
   gl.enableVertexAttribArray(positionAttributeLocation[2]);
   gl.vertexAttribPointer(positionAttributeLocation[2], 3, gl.FLOAT, false, 0, 0);
 
+  var uvBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, uvBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(baseUV), gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(uvAttributeLocation);
+  gl.vertexAttribPointer(uvAttributeLocation, 2, gl.FLOAT, false, 0, 0);
+
   var indexBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
   gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(baseIndices), gl.STATIC_DRAW);
+
+  // Create a texture.
+  texture = gl.createTexture();
+  // use texture unit 0
+  gl.activeTexture(gl.TEXTURE0);
+  // bind to the TEXTURE_2D bind point of texture unit 0
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+
+  // Asynchronously load an image
+  var image = new Image();
+  image.src = baseDir + "base.jpg";
+  image.onload = function() {
+      //Make sure this is the active one
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, texture);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+
+      gl.generateMipmap(gl.TEXTURE_2D);
+    };
 
 
   // ball
@@ -411,11 +452,14 @@ function drawScene() {
 
 
   // base
-  gl.useProgram(programs[2]);
+  gl.useProgram(programs[3]);
   viewWorldMatrix = utils.multiplyMatrices(viewMatrix, baseWorldMatrix);
   projectionMatrix = utils.multiplyMatrices(perspectiveMatrix, viewWorldMatrix);
-  gl.uniformMatrix4fv(matrixLocation[2], gl.FALSE, utils.transposeMatrix(projectionMatrix));
-  gl.uniform3fv(baseColorLocation, baseColor);
+  gl.uniformMatrix4fv(matrixLocation[3], gl.FALSE, utils.transposeMatrix(projectionMatrix));
+
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+  gl.uniform1i(textLocation, 0);
 
   gl.bindVertexArray(baseVAO);
   gl.drawElements(gl.TRIANGLES, baseIndices.length, gl.UNSIGNED_SHORT, 0 );
@@ -530,6 +574,13 @@ async function init(){
     var fragmentShader = utils.createShader(gl, gl.FRAGMENT_SHADER, shaderText[1]);
 
     programs[2] = utils.createProgram(gl, vertexShader, fragmentShader);
+  });
+
+    await utils.loadFiles([shaderDir + 'vs_text_base.glsl', shaderDir + 'fs_text_base.glsl'], function (shaderText) {
+    var vertexShader = utils.createShader(gl, gl.VERTEX_SHADER, shaderText[0]);
+    var fragmentShader = utils.createShader(gl, gl.FRAGMENT_SHADER, shaderText[1]);
+
+    programs[3] = utils.createProgram(gl, vertexShader, fragmentShader);
   });
 
   //Load objects
