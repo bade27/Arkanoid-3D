@@ -27,6 +27,14 @@ var baseColorLocation;
 var paddleColorLocation;
 var obstaclesColorLocation;
 var uvAttributeLocation;
+var normalAttributeLocation = new Array();
+var materialDiffColorHandle = new Array();
+var specularDiffColorHandle = new Array();
+var eyeDirectionHandler;
+var shineHanlder;
+
+var paddleNormalMatrix;
+var ballNormalMatrix;
 
 // Paddle coordinates and status
 var originalPaddlePos = [0.0, 1.0, -4.5];
@@ -78,6 +86,7 @@ var obstacleVertices;
 var obstacleNormals;
 var obstacleIndices;
 
+var eyeDirection;
 
 // colors
 var paddleColor;
@@ -109,21 +118,33 @@ var stop = true;
 
 var up = [0.0,1.0,0.0];
 
+
+var shine;
+var paddleSpecular;
+
 function main() {
 
   //directional light
-  dirLightAlpha = utils.degToRad(180);
-  dirLightBeta  = utils.degToRad(100);
+  dirLightAlpha = -utils.degToRad(120);
+  dirLightBeta  = -utils.degToRad(270);
   directionalLight = [Math.cos(dirLightAlpha) * Math.cos(dirLightBeta),
               Math.sin(dirLightAlpha), Math.cos(dirLightAlpha) * Math.sin(dirLightBeta)];
-  directionalLightColor = [0.1, 1.0, 1.0];
+  directionalLightColor = [1.0, 1.0, 1.0];
+
+  dirEyeAlpha = -utils.degToRad(120);
+  dirEyeBeta  = -utils.degToRad(270);
+  eyeDirection = [Math.cos(dirEyeAlpha) * Math.cos(dirEyeBeta),
+              Math.sin(dirEyeAlpha), Math.cos(dirEyeAlpha) * Math.sin(dirEyeBeta)];
 
   //material color
-  paddleColor = [1.0, 0.0, 0.0];
+  paddleColor = [0.5, 0.5, 0.5];
   baseColor = [0.0, 0.5, 0.0];
-  ballColor = [0.0, 0.0, 1.0];
+  ballColor = [1.0, 0.0, 0.5];
   obstacleColor1 = [0.5,0.5,0.5];
   obstacleColor2 = [0.1,0.2,0.3];
+
+  shine = 64;
+  paddleSpecular = [1.0,1.0,1.0];
 
 
   paddleWorldMatrix = utils.MakeWorld(xPaddle, yPaddle, zPaddle, 0.0, 0.0, 0.0, 1.0);
@@ -144,6 +165,18 @@ function main() {
   gl.clearColor(0.85, 0.85, 0.85, 1.0);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   gl.enable(gl.DEPTH_TEST);
+
+  //Lambert
+  positionAttributeLocation[0] = gl.getAttribLocation(programs[0], "inPosition");
+  normalAttributeLocation[0] = gl.getAttribLocation(programs[0], "inNormal");
+  matrixLocation[0] = gl.getUniformLocation(programs[0], "matrix");
+  materialDiffColorHandle[0] = gl.getUniformLocation(programs[0], 'mDiffColor');
+  lightDirectionHandle[0] = gl.getUniformLocation(programs[0], 'lightDirection');
+  lightColorHandle[0] = gl.getUniformLocation(programs[0], 'lightColor');
+  normalMatrixPositionHandle[0] = gl.getUniformLocation(programs[0], 'nMatrix');
+  specularDiffColorHandle[0] = gl.getUniformLocation(programs[0], 'mSpecular');
+  eyeDirectionHandler = gl.getUniformLocation(programs[0], 'eyeDir');
+  shineHanlder = gl.getUniformLocation(programs[0], 'shine');
 
   //Unlit
   positionAttributeLocation[2] = gl.getAttribLocation(programs[2], "inPosition");
@@ -230,8 +263,14 @@ function main() {
   var positionBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(ballVertices), gl.STATIC_DRAW);
-  gl.enableVertexAttribArray(positionAttributeLocation[2]);
-  gl.vertexAttribPointer(positionAttributeLocation[2], 3, gl.FLOAT, false, 0, 0);
+  gl.enableVertexAttribArray(positionAttributeLocation[0]);
+  gl.vertexAttribPointer(positionAttributeLocation[0], 3, gl.FLOAT, false, 0, 0);
+
+  var normalBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(ballNormals), gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(normalAttributeLocation[0]);
+  gl.vertexAttribPointer(normalAttributeLocation[0], 3, gl.FLOAT, false, 0, 0);
 
   var indexBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
@@ -249,8 +288,14 @@ function main() {
   var positionBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(paddleVertices), gl.STATIC_DRAW);
-  gl.enableVertexAttribArray(positionAttributeLocation[2]);
-  gl.vertexAttribPointer(positionAttributeLocation[2], 3, gl.FLOAT, false, 0, 0);
+  gl.enableVertexAttribArray(positionAttributeLocation[0]);
+  gl.vertexAttribPointer(positionAttributeLocation[0], 3, gl.FLOAT, false, 0, 0);
+
+  var normalBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(paddleNormals), gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(normalAttributeLocation[0]);
+  gl.vertexAttribPointer(normalAttributeLocation[0], 3, gl.FLOAT, false, 0, 0);
 
   var indexBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
@@ -448,11 +493,25 @@ function drawScene() {
 
 
   // paddle
-  gl.useProgram(programs[2]);
+  gl.useProgram(programs[0]);
   viewWorldMatrix = utils.multiplyMatrices(viewMatrix, paddleWorldMatrix);
   projectionMatrix = utils.multiplyMatrices(perspectiveMatrix, viewWorldMatrix);
-  gl.uniformMatrix4fv(matrixLocation[2], gl.FALSE, utils.transposeMatrix(projectionMatrix));
-  gl.uniform3fv(paddleColorLocation, paddleColor);
+  //gl.uniformMatrix4fv(matrixLocation[0], gl.FALSE, utils.transposeMatrix(projectionMatrix));
+
+  paddleNormalMatrix = utils.invertMatrix(utils.transposeMatrix(viewWorldMatrix));
+  gl.uniformMatrix4fv(normalMatrixPositionHandle[0], gl.FALSE, utils.transposeMatrix(paddleNormalMatrix));
+
+  gl.uniformMatrix4fv(matrixLocation[0], gl.FALSE, utils.transposeMatrix(projectionMatrix));
+
+  var dirLightTransformed = utils.multiplyMatrix3Vector3(utils.sub3x3from4x4(viewMatrix), directionalLight);
+  gl.uniform3fv(lightDirectionHandle[0],  dirLightTransformed);
+
+  gl.uniform3fv(materialDiffColorHandle[0], paddleColor);
+  gl.uniform3fv(lightColorHandle[0],  directionalLightColor);
+
+  gl.uniform3fv(specularDiffColorHandle[0], paddleSpecular);
+  gl.uniform3fv(eyeDirectionHandler, eyeDirection);
+  gl.uniform1f(shineHanlder, shine);
 
   gl.bindVertexArray(paddleVAO);
   gl.drawElements(gl.TRIANGLES, paddleIndices.length, gl.UNSIGNED_SHORT, 0 );
@@ -473,11 +532,34 @@ function drawScene() {
 
 
   // ball
-  gl.useProgram(programs[2]);
+  // gl.useProgram(programs[2]);
+  // viewWorldMatrix = utils.multiplyMatrices(viewMatrix, ballWorldMatrix);
+  // projectionMatrix = utils.multiplyMatrices(perspectiveMatrix, viewWorldMatrix);
+  // gl.uniformMatrix4fv(matrixLocation[2], gl.FALSE, utils.transposeMatrix(projectionMatrix));
+  // gl.uniform3fv(ballColorLocation, ballColor);
+  //
+  // gl.bindVertexArray(ballVAO);
+  // gl.drawElements(gl.TRIANGLES, ballIndices.length, gl.UNSIGNED_SHORT, 0 );
+  gl.useProgram(programs[0]);
   viewWorldMatrix = utils.multiplyMatrices(viewMatrix, ballWorldMatrix);
   projectionMatrix = utils.multiplyMatrices(perspectiveMatrix, viewWorldMatrix);
-  gl.uniformMatrix4fv(matrixLocation[2], gl.FALSE, utils.transposeMatrix(projectionMatrix));
-  gl.uniform3fv(ballColorLocation, ballColor);
+  //gl.uniformMatrix4fv(matrixLocation[0], gl.FALSE, utils.transposeMatrix(projectionMatrix));
+
+  ballNormalMatrix = utils.invertMatrix(utils.transposeMatrix(viewWorldMatrix));
+  gl.uniformMatrix4fv(normalMatrixPositionHandle[0], gl.FALSE, utils.transposeMatrix(ballNormalMatrix));
+
+  gl.uniformMatrix4fv(matrixLocation[0], gl.FALSE, utils.transposeMatrix(projectionMatrix));
+
+  var dirLightTransformed = utils.multiplyMatrix3Vector3(utils.sub3x3from4x4(viewMatrix), directionalLight);
+  gl.uniform3fv(lightDirectionHandle[0],  dirLightTransformed);
+
+  gl.uniform3fv(materialDiffColorHandle[0], ballColor);
+  gl.uniform3fv(lightColorHandle[0],  directionalLightColor);
+
+  gl.uniform3fv(specularDiffColorHandle[0], paddleSpecular);
+  var dirEyeTransformed = utils.multiplyMatrix3Vector3(utils.sub3x3from4x4(viewMatrix), eyeDirection);
+  gl.uniform3fv(eyeDirectionHandler, dirEyeTransformed);
+  gl.uniform1f(shineHanlder, shine);
 
   gl.bindVertexArray(ballVAO);
   gl.drawElements(gl.TRIANGLES, ballIndices.length, gl.UNSIGNED_SHORT, 0 );
