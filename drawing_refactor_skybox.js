@@ -787,24 +787,19 @@ function game_reset() {
 
   ballWorldMatrix = utils.MakeWorld(xBall, yBall, zBall, 0.0, 0.0, 0.0, 1.0);
   paddleWorldMatrix = utils.MakeWorld(xPaddle, yPaddle, zPaddle, 0.0, 0.0, 0.0, 1.0);
-
-  const score = document.getElementById("score");
-  score.textContent = ""+points;
-  const livestx = document.getElementById("lives");
-  livestx.textContent = ""+lives;
-  const instr = document.getElementById("status");
-  instr.textContent = "";
 }
 
 function game_status() {
   const status = document.getElementById("status");
   const instr = document.getElementById("instructions");
   if (lives == 0) {
+    game_over = true;
     status.textContent = "GAME OVER";
     instr.textContent = "Press TAB to strat a new game";
     game_reset();
   }
   if (points == obstaclesCenters.length) {
+    game_over = true;
     status.textContent = "YOU WON";
     instr.textContent = "Press TAB to strat a new game";
     game_reset();
@@ -882,8 +877,17 @@ window.addEventListener("keydown", function keyFunction(e){
     if (stop == true) {
       stop = false;
     }
-    const instr = document.getElementById("instructions");
-    instr.textContent = "";
+    if (game_over) {
+      const score = document.getElementById("score");
+      score.textContent = ""+points;
+      const livestx = document.getElementById("lives");
+      livestx.textContent = ""+lives;
+      const status = document.getElementById("status");
+      status.textContent = "";
+      const instr = document.getElementById("instructions");
+      instr.textContent = "";
+      game_over = false;
+    }
   }
 
   //If you put it here instead, you will redraw the cube only when the camera has been moved
