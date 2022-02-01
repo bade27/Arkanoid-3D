@@ -6,9 +6,10 @@ in vec3 fsNormal;
 in vec3 FragPos;
 out vec4 outColor;
 
-uniform vec3 mDiffColor; //material diffuse color
-uniform vec3 lightDirection; // directional light direction vec
-uniform vec3 lightColor; //directional light color
+uniform vec3 mDiffColor;
+uniform vec3 lightPos;
+uniform mat3 normalViewMat;
+uniform vec3 lightColor;
 uniform vec3 mSpecular;
 uniform vec3 eyePos;
 uniform float shine;
@@ -17,11 +18,11 @@ uniform vec3 ambient;
 uniform vec3 ambientLight;
 
 void main() {
-  vec3 lightDirNorm = normalize(lightDirection);
+  vec3 lightDirNorm = normalize(normalViewMat*(lightPos-FragPos));
   vec3 eyeDirNorm = normalize(eyePos-FragPos);
 
   vec3 nNormal = normalize(fsNormal);
-  vec3 lambertDiffuse = mDiffColor * clamp(dot(-lightDirNorm,nNormal), 0.0, 1.0);
+  vec3 lambertDiffuse = mDiffColor * clamp(dot(lightDirNorm,nNormal), 0.0, 1.0);
   vec3 lambertColor = lightColor * lambertDiffuse;
 
   vec3 h = normalize(lightDirNorm+eyeDirNorm);

@@ -46,6 +46,7 @@ var eyePos;
 var emitHandler;
 var ambientLightColorHandler;
 var ambientHandler;
+var viewNormHandler;
 var up = [0.0,1.0,0.0];
 
 
@@ -147,14 +148,13 @@ var stop = true;
 function main() {
 
   //directional light
-  dirLightAlpha = -utils.degToRad(150);
-  dirLightBeta  = -utils.degToRad(240);
-  directionalLight = [Math.cos(dirLightAlpha) * Math.cos(dirLightBeta),
-              Math.sin(dirLightAlpha), Math.cos(dirLightAlpha) * Math.sin(dirLightBeta)];
+  //dirLightAlpha = -utils.degToRad(150);
+  //dirLightBeta  = -utils.degToRad(240);
+  //directionalLight = [Math.cos(dirLightAlpha) * Math.cos(dirLightBeta),
+  //            Math.sin(dirLightAlpha), Math.cos(dirLightAlpha) * Math.sin(dirLightBeta)];
+  directionalLight = [-10.0,10.0,5.0];
   directionalLightColor = [1.0, 1.0, 1.0];
 
-  dirEyeAlpha = -utils.degToRad(120);
-  dirEyeBeta  = -utils.degToRad(270);
   eyePos = [0.0,0.0,0.0];
 
   //material color
@@ -207,13 +207,14 @@ function main() {
   normalAttributeLocation = gl.getAttribLocation(program, "inNormal");
   matrixLocationP = gl.getUniformLocation(program, "matrix");
   materialDiffColorHandle = gl.getUniformLocation(program, 'mDiffColor');
-  lightDirectionHandle = gl.getUniformLocation(program, 'lightDirection');
+  lightDirectionHandle = gl.getUniformLocation(program, 'lightPos');
   lightColorHandle = gl.getUniformLocation(program, 'lightColor');
   normalMatrixPositionHandle = gl.getUniformLocation(program, 'nMatrix');
   specularDiffColorHandle = gl.getUniformLocation(program, 'mSpecular');
   eyePosHandler = gl.getUniformLocation(program, 'eyePos');
   shineHanlder = gl.getUniformLocation(program, 'shine');
   viewHandler = gl.getUniformLocation(program, "view");
+  viewNormHandler = gl.getUniformLocation(program, "normalViewMat");
   emitHandler = gl.getUniformLocation(program, "emit");
   ambientHandler = gl.getUniformLocation(program, "ambient");
   ambientLightColorHandler = gl.getUniformLocation(program, "ambientLight");
@@ -547,8 +548,9 @@ function drawScene() {
 
   gl.uniformMatrix4fv(viewHandler, gl.FALSE, utils.transposeMatrix(viewWorldMatrix));
 
-  var dirLightTransformed = utils.multiplyMatrix3Vector3(utils.sub3x3from4x4(viewMatrix), directionalLight);
-  gl.uniform3fv(lightDirectionHandle,  dirLightTransformed);
+  //var dirLightTransformed = utils.multiplyMatrix3Vector3(utils.sub3x3from4x4(viewMatrix), directionalLight);
+  gl.uniformMatrix3fv(viewNormHandler, gl.FALSE, utils.sub3x3from4x4(viewMatrix));
+  gl.uniform3fv(lightDirectionHandle,  directionalLight);
 
   gl.uniform3fv(materialDiffColorHandle, paddleColor);
   gl.uniform3fv(lightColorHandle,  directionalLightColor);
@@ -593,8 +595,9 @@ function drawScene() {
 
   gl.uniformMatrix4fv(viewHandler, gl.FALSE, utils.transposeMatrix(viewWorldMatrix));
 
-  var dirLightTransformed = utils.multiplyMatrix3Vector3(utils.sub3x3from4x4(viewMatrix), directionalLight);
-  gl.uniform3fv(lightDirectionHandle,  dirLightTransformed);
+  //var dirLightTransformed = utils.multiplyMatrix3Vector3(utils.sub3x3from4x4(viewMatrix), directionalLight);
+  gl.uniformMatrix3fv(viewNormHandler, gl.FALSE, utils.sub3x3from4x4(viewMatrix));
+  gl.uniform3fv(lightDirectionHandle,  directionalLight);
 
   gl.uniform3fv(materialDiffColorHandle, ballColor);
   gl.uniform3fv(lightColorHandle,  directionalLightColor);
@@ -628,8 +631,9 @@ function drawScene() {
 
         gl.uniformMatrix4fv(viewHandler, gl.FALSE, utils.transposeMatrix(viewWorldMatrix));
 
-        var dirLightTransformed = utils.multiplyMatrix3Vector3(utils.sub3x3from4x4(viewMatrix), directionalLight);
-        gl.uniform3fv(lightDirectionHandle,  dirLightTransformed);
+        //var dirLightTransformed = utils.multiplyMatrix3Vector3(utils.sub3x3from4x4(viewMatrix), directionalLight);
+        gl.uniformMatrix3fv(viewNormHandler, gl.FALSE, utils.sub3x3from4x4(viewMatrix));
+        gl.uniform3fv(lightDirectionHandle,  directionalLight);
 
         var obstacleColor = (i+j)%2==0 ? obstacleColor1 : obstacleColor2;
         gl.uniform3fv(obstaclesColorLocation, obstacleColor);
